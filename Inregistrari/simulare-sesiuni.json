@@ -1,0 +1,320 @@
+{
+ "sesiuni": [
+  {
+   "persoana": "bejenaru",
+   "nivel": "usor",
+   "csv": "simulare-bejenaru-usor-puls.csv",
+   "baseline": {
+    "bpm": 68.6,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 120.04,
+     "intensitate": 1
+    },
+    {
+     "t": 200.02,
+     "intensitate": 1
+    },
+    {
+     "t": 230.14,
+     "intensitate": 1
+    },
+    {
+     "t": 257.54,
+     "intensitate": 1
+    }
+   ],
+   "h_adevarat": 0.201,
+   "simulat": true
+  },
+  {
+   "persoana": "bejenaru",
+   "nivel": "mediu",
+   "csv": "simulare-bejenaru-mediu-puls.csv",
+   "baseline": {
+    "bpm": 75.3,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 90.17,
+     "intensitate": 2
+    },
+    {
+     "t": 118.98,
+     "intensitate": 2
+    },
+    {
+     "t": 151.13,
+     "intensitate": 2
+    },
+    {
+     "t": 179.66,
+     "intensitate": 2
+    },
+    {
+     "t": 209.61,
+     "intensitate": 2
+    },
+    {
+     "t": 246.2,
+     "intensitate": 2
+    }
+   ],
+   "h_adevarat": 0.201,
+   "simulat": true
+  },
+  {
+   "persoana": "bejenaru",
+   "nivel": "greu",
+   "csv": "simulare-bejenaru-greu-puls.csv",
+   "baseline": {
+    "bpm": 64.7,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 77.18,
+     "intensitate": 3
+    },
+    {
+     "t": 102.76,
+     "intensitate": 3
+    },
+    {
+     "t": 132.01,
+     "intensitate": 3
+    },
+    {
+     "t": 191.77,
+     "intensitate": 3
+    },
+    {
+     "t": 222.45,
+     "intensitate": 3
+    },
+    {
+     "t": 248.33,
+     "intensitate": 3
+    },
+    {
+     "t": 276.1,
+     "intensitate": 3
+    }
+   ],
+   "h_adevarat": 0.201,
+   "simulat": true
+  },
+  {
+   "persoana": "ene",
+   "nivel": "usor",
+   "csv": "simulare-ene-usor-puls.csv",
+   "baseline": {
+    "bpm": 70.5,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 178.72,
+     "intensitate": 1
+    },
+    {
+     "t": 209.27,
+     "intensitate": 1
+    },
+    {
+     "t": 236.3,
+     "intensitate": 1
+    },
+    {
+     "t": 266.41,
+     "intensitate": 1
+    }
+   ],
+   "h_adevarat": 0.117,
+   "simulat": true
+  },
+  {
+   "persoana": "ene",
+   "nivel": "mediu",
+   "csv": "simulare-ene-mediu-puls.csv",
+   "baseline": {
+    "bpm": 65.7,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 98.42,
+     "intensitate": 2
+    },
+    {
+     "t": 158.01,
+     "intensitate": 2
+    },
+    {
+     "t": 225.23,
+     "intensitate": 2
+    },
+    {
+     "t": 253.54,
+     "intensitate": 2
+    },
+    {
+     "t": 284.78,
+     "intensitate": 2
+    }
+   ],
+   "h_adevarat": 0.117,
+   "simulat": true
+  },
+  {
+   "persoana": "ene",
+   "nivel": "greu",
+   "csv": "simulare-ene-greu-puls.csv",
+   "baseline": {
+    "bpm": 76.0,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 82.28,
+     "intensitate": 3
+    },
+    {
+     "t": 110.45,
+     "intensitate": 3
+    },
+    {
+     "t": 139.39,
+     "intensitate": 3
+    },
+    {
+     "t": 165.31,
+     "intensitate": 3
+    },
+    {
+     "t": 194.59,
+     "intensitate": 3
+    },
+    {
+     "t": 251.99,
+     "intensitate": 3
+    },
+    {
+     "t": 282.84,
+     "intensitate": 3
+    }
+   ],
+   "h_adevarat": 0.117,
+   "simulat": true
+  },
+  {
+   "persoana": "pirvu",
+   "nivel": "usor",
+   "csv": "simulare-pirvu-usor-puls.csv",
+   "baseline": {
+    "bpm": 76.6,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 168.83,
+     "intensitate": 1
+    },
+    {
+     "t": 226.28,
+     "intensitate": 1
+    },
+    {
+     "t": 256.63,
+     "intensitate": 1
+    }
+   ],
+   "h_adevarat": 0.071,
+   "simulat": true
+  },
+  {
+   "persoana": "pirvu",
+   "nivel": "mediu",
+   "csv": "simulare-pirvu-mediu-puls.csv",
+   "baseline": {
+    "bpm": 66.8,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 93.17,
+     "intensitate": 2
+    },
+    {
+     "t": 122.68,
+     "intensitate": 2
+    },
+    {
+     "t": 155.3,
+     "intensitate": 2
+    },
+    {
+     "t": 186.87,
+     "intensitate": 2
+    },
+    {
+     "t": 216.73,
+     "intensitate": 2
+    },
+    {
+     "t": 248.6,
+     "intensitate": 2
+    }
+   ],
+   "h_adevarat": 0.071,
+   "simulat": true
+  },
+  {
+   "persoana": "pirvu",
+   "nivel": "greu",
+   "csv": "simulare-pirvu-greu-puls.csv",
+   "baseline": {
+    "bpm": 69.3,
+    "sd": 3.2,
+    "rmssd": 38
+   },
+   "jumpscares": [
+    {
+     "t": 86.66,
+     "intensitate": 3
+    },
+    {
+     "t": 189.99,
+     "intensitate": 3
+    },
+    {
+     "t": 217.91,
+     "intensitate": 3
+    },
+    {
+     "t": 250.51,
+     "intensitate": 3
+    },
+    {
+     "t": 283.37,
+     "intensitate": 3
+    }
+   ],
+   "h_adevarat": 0.071,
+   "simulat": true
+  }
+ ],
+ "simulat": true,
+ "nota": "Semnal generat pe calculator. Nu sunt masuratori."
+}
