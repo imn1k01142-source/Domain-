@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DOMAIN — prototip interactiv (date simulate)</title>
+<style>
+/* ============================================================
+   DOMAIN — un singur fisier. Deschide-l cu dublu-click.
+   Estetica: monitor cardiac clinic, corupt de groaza.
+   Rosu arterial = corpul. Cyan clinic = masuratoarea.
+   ============================================================ */
+
+:root{
+  --bg:#06060a;
+  --panel:#0d0d13;
+  --panel-2:#12121a;
+  --line:#1c1c26;
+  --line-2:#2a2a38;
+  --txt:#eceaef;
+  --dim:#8b8797;
+  --dim-2:#5a5766;
+  --red:#ff2b3d;
+  --red-soft:#ff6b78;
+  --red-deep:#7a0d1a;
+  --cyan:#4cc9f0;
+  --amber:#ffb020;
+  --green:#3ddc97;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--txt); font-family:var(--sans);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+::selection{background:var(--red);color:#fff}
+
+/* ---------- fundal: monitor cardiac ambiental ---------- */
+#bg{
+  position:fixed; inset:0; width:100%; height:100%; z-index:0;
+  opacity:.06; transition:opacity .9s var(--ease);
+}
+body[data-screen="intro"] #bg{opacity:.5}
+body[data-screen="calib"] #bg{opacity:.09}
+body[data-screen="play"]  #bg{opacity:0}
+
+/* ---------- straturi de efect ---------- */
+#fx{position:fixed;inset:0;z-index:60;pointer-events:none}
+#fx .scan{
+  position:absolute;inset:0;opacity:.5;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px);
+}
+#fx .grain{
+  position:absolute;inset:-50%;opacity:.05;
+  background-image:radial-gradient(circle at 50% 50%,#fff 0.5px,transparent 0.6px);
+  background-size:3px 3px;
+  animation:drift 6s steps(6) infinite;
+}
+@keyframes drift{
+  0%{transform:translate(0,0)} 20%{transform:translate(-1%,1%)}
+  40%{transform:translate(1%,-1%)} 60%{transform:translate(-1%,-1%)}
+  80%{transform:translate(1%,1%)} 100%{transform:translate(0,0)}
+}
+#fx .vig{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 90% 80% at 50% 45%,transparent 35%,rgba(0,0,0,.75) 100%);
+}
+#arousal{
+  position:fixed;inset:0;z-index:61;pointer-events:none;opacity:0;
+  transition:opacity .45s var(--ease);
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,transparent 30%,rgba(140,0,16,.75) 100%);
+}
+body.shake #app{animation:shake .32s infinite}
+@keyframes shake{
+  0%{transform:translate(0,0)}25%{transform:translate(1.5px,-1px)}
+  50%{transform:translate(-1.5px,1px)}75%{transform:translate(1px,1.5px)}
+  100%{transform:translate(0,0)}
+}
+@media (prefers-reduced-motion:reduce){
+  body.shake #app{animation:none}
+  #fx .grain{animation:none}
+}
+
+/* ---------- bara de sus ---------- */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:58px;z-index:50;
+  display:flex;align-items:center;gap:22px;padding:0 24px;
+  background:linear-gradient(180deg,rgba(6,6,10,.96),rgba(6,6,10,.55) 70%,transparent);
+  backdrop-filter:blur(6px);
+}
+.wordmark{
+  font-weight:800;letter-spacing:.34em;font-size:12px;
+  display:flex;align-items:center;gap:9px;
+}
+.wordmark .beat{
+  width:7px;height:7px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 0 0 rgba(255,43,61,.65);
+}
+.wordmark .beat.on{animation:ping .55s var(--ease)}
+@keyframes ping{
+  0%{box-shadow:0 0 0 0 rgba(255,43,61,.6);transform:scale(1)}
+  60%{box-shadow:0 0 0 9px rgba(255,43,61,0);transform:scale(1.5)}
+  100%{box-shadow:0 0 0 0 rgba(255,43,61,0);transform:scale(1)}
+}
+#srcChip{
+  display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--dim);
+  border:1px solid var(--line);border-radius:99px;padding:5px 12px 5px 9px;
+  cursor:pointer;transition:.18s var(--ease);background:rgba(255,255,255,.012);
+}
+#srcChip:hover,#srcChip:focus-visible{border-color:var(--line-2);color:var(--txt)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dim-2);flex:none}
+.dot.sim{background:var(--amber);box-shadow:0 0 9px var(--amber)}
+.dot.live{background:var(--green);box-shadow:0 0 9px var(--green)}
+.dot.off{background:#3d3a47}
+
+.vitals{margin-left:auto;display:flex;align-items:center;gap:16px;font-family:var(--mono)}
+.vitals .big{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.vitals .big.pulse{animation:bump .5s var(--ease)}
+@keyframes bump{0%{transform:scale(1)}30%{transform:scale(1.09)}100%{transform:scale(1)}}
+.vitals .u{font-size:9.5px;color:var(--dim-2);letter-spacing:.14em;margin-left:3px}
+.vitals .z{font-size:11px;color:var(--dim);padding-left:16px;border-left:1px solid var(--line)}
+#sndBtn{
+  border:1px solid var(--line);background:transparent;color:var(--dim);
+  border-radius:8px;width:34px;height:32px;cursor:pointer;font-size:13px;
+  transition:.18s var(--ease);
+}
+#sndBtn:hover,#sndBtn:focus-visible{border-color:var(--line-2);color:var(--txt)}
+#sndBtn.on{color:var(--red);border-color:rgba(255,43,61,.4)}
+
+/* ---------- ecrane ---------- */
+#app{position:absolute;inset:0;z-index:10}
+.screen{
+  position:absolute;inset:58px 0 0 0;overflow-y:auto;overflow-x:hidden;
+  opacity:0;visibility:hidden;transform:translateY(14px);
+  transition:opacity .5s var(--ease),transform .5s var(--ease),visibility .5s;
+}
+.screen.active{opacity:1;visibility:visible;transform:none}
+.screen::-webkit-scrollbar{width:9px}
+.screen::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
+.screen::-webkit-scrollbar-track{background:transparent}
+
+.wrap{max-width:1180px;margin:0 auto;padding:56px 32px 90px}
+.wrap.narrow{max-width:880px;text-align:center;padding-top:min(11vh,110px)}
+
+/* intrari decalate */
+.screen.active .stag>*{animation:rise .7s var(--ease) backwards}
+.screen.active .stag>*:nth-child(1){animation-delay:.05s}
+.screen.active .stag>*:nth-child(2){animation-delay:.13s}
+.screen.active .stag>*:nth-child(3){animation-delay:.21s}
+.screen.active .stag>*:nth-child(4){animation-delay:.29s}
+.screen.active .stag>*:nth-child(5){animation-delay:.37s}
+.screen.active .stag>*:nth-child(6){animation-delay:.45s}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* ---------- tipografie ---------- */
+.eyebrow{
+  font-size:10.5px;letter-spacing:.42em;text-transform:uppercase;
+  color:var(--dim-2);margin:0 0 24px;
+}
+.hero{
+  font-size:clamp(52px,9.6vw,128px);line-height:.88;margin:0;
+  font-weight:900;letter-spacing:.06em;
+  background:linear-gradient(175deg,#fff 8%,#ff8b95 46%,#5c0a14 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 42px rgba(255,43,61,.16));
+}
+.tag{
+  color:var(--red-soft);letter-spacing:.26em;text-transform:uppercase;
+  font-size:11px;margin:22px 0 30px;font-weight:600;
+}
+h2{
+  font-size:clamp(26px,3.4vw,38px);margin:0 0 12px;
+  font-weight:800;letter-spacing:-.02em;
+}
+h2 .accent{color:var(--red)}
+.lead{color:var(--dim);line-height:1.65;font-size:15px;max-width:620px;margin:0 0 30px}
+.wrap.narrow .lead{margin:0 auto 34px}
+.hint{color:var(--dim-2);font-size:12px;line-height:1.6;margin-top:30px}
+.hint kbd{
+  font-family:var(--mono);font-size:11px;border:1px solid var(--line-2);
+  border-radius:4px;padding:1px 6px;color:var(--dim);
+}
+
+/* ---------- butoane ---------- */
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.wrap.narrow .row{justify-content:center}
+button{font:inherit;cursor:pointer;border-radius:10px;transition:.2s var(--ease)}
+.btn{
+  padding:14px 26px;font-size:14px;font-weight:600;letter-spacing:.01em;
+  border:1px solid var(--line);background:transparent;color:var(--dim);
+}
+.btn:hover,.btn:focus-visible{border-color:var(--line-2);color:var(--txt);transform:translateY(-1px)}
+button:focus-visible,.opt:focus-visible,#srcChip:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.btn.pri{
+  background:linear-gradient(180deg,#ff3b4c,#e0142a);border-color:#ff4a59;color:#fff;
+  box-shadow:0 6px 24px -8px rgba(255,43,61,.6);
+}
+.btn.pri:hover,.btn.pri:focus-visible{box-shadow:0 10px 30px -8px rgba(255,43,61,.75);transform:translateY(-2px)}
+.btn.sm{padding:9px 16px;font-size:12.5px;border-radius:8px}
+
+/* ---------- panouri ---------- */
+.panel{
+  border:1px solid var(--line);border-radius:14px;
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  position:relative;overflow:hidden;
+}
+.panel::before{
+  content:"";position:absolute;top:0;left:14px;right:14px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);
+}
+.panel-label{
+  position:absolute;top:12px;left:16px;z-index:2;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--dim-2);
+}
+
+/* ---------- calibrare ---------- */
+.calib-grid{
+  display:grid;grid-template-columns:240px 1fr;gap:22px;align-items:stretch;
+  margin:6px 0 22px;
+}
+@media (max-width:820px){.calib-grid{grid-template-columns:1fr}}
+.breath{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:26px 18px;gap:16px;
+}
+.ring{position:relative;width:150px;height:150px}
+.ring canvas{width:150px;height:150px;display:block}
+.ring .rbpm{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-family:var(--mono);
+}
+.ring .rbpm b{font-size:34px;font-weight:700;line-height:1}
+.ring .rbpm i{font-size:9px;color:var(--dim-2);letter-spacing:.2em;font-style:normal;margin-top:3px}
+.breath-txt{
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--dim-2);transition:color .6s var(--ease);height:14px;
+}
+.breath-txt.in{color:var(--cyan)}
+.ecg-panel{min-height:230px;padding:34px 10px 10px}
+.ecg-panel canvas{width:100%;height:186px;display:block}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.tile{
+  border:1px solid var(--line);border-radius:12px;padding:16px 18px;
+  background:var(--panel);text-align:left;
+}
+.tile b{display:block;font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:-.02em}
+.tile b small{font-size:12px;color:var(--dim-2);font-weight:400;margin-left:2px}
+.tile span{
+  display:block;font-size:9.5px;color:var(--dim-2);text-transform:uppercase;
+  letter-spacing:.16em;margin-top:6px;
+}
+.bar{height:2px;background:var(--line);border-radius:2px;margin-top:26px;overflow:hidden}
+.bar>i{display:block;height:100%;width:100%;transform:scaleX(0);transform-origin:0 50%;background:linear-gradient(90deg,var(--cyan),var(--red));transition:transform .25s var(--ease)}
+
+/* ---------- nivele ---------- */
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:18px;margin-top:8px}
+.lvl{
+  border:1px solid var(--line);border-radius:16px;padding:26px 24px 22px;
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  cursor:pointer;position:relative;overflow:hidden;
+  transition:.28s var(--ease);
+}
+.lvl::after{
+  content:"";position:absolute;inset:0;opacity:0;transition:opacity .3s var(--ease);
+  background:radial-gradient(circle at 50% 0%,rgba(255,43,61,.14),transparent 65%);
+}
+.lvl:hover,.lvl:focus-visible{transform:translateY(-5px);border-color:rgba(255,43,61,.35);outline:none}
+.lvl:focus-visible{box-shadow:0 0 0 2px var(--cyan)}
+.lvl:hover::after,.lvl:focus-visible::after{opacity:1}
+.lvl.rec{border-color:var(--red);box-shadow:0 0 0 1px rgba(255,43,61,.2),0 16px 44px -22px rgba(255,43,61,.6)}
+.lvl .rectag{
+  position:absolute;top:16px;right:18px;font-size:9px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--red);font-weight:700;
+}
+.lvl .num{font-family:var(--mono);font-size:11px;color:var(--dim-2);letter-spacing:.14em}
+.lvl h3{margin:10px 0 8px;font-size:23px;font-weight:800;letter-spacing:-.01em}
+.lvl p{color:var(--dim);font-size:13.5px;line-height:1.6;margin:0 0 20px;min-height:66px}
+.pips{display:flex;gap:4px;margin-bottom:18px}
+.pips i{height:3px;flex:1;background:var(--line);border-radius:3px;transition:.3s var(--ease)}
+.pips i.on{background:var(--red);box-shadow:0 0 10px rgba(255,43,61,.55)}
+.lvl .meta{font-family:var(--mono);font-size:10.5px;color:var(--dim-2);letter-spacing:.04em}
+
+/* ---------- player ---------- */
+#s-play{inset:0}
+.stage{position:absolute;inset:0;background:#000;display:flex;align-items:center;justify-content:center}
+#clip{max-width:100%;max-height:100%;display:none}
+#clip.on{display:block}
+#phantom{position:absolute;inset:0;width:100%;height:100%;display:none}
+#phantom.on{display:block}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.hit{animation:fl .55s ease-out}
+@keyframes fl{0%{opacity:.9}100%{opacity:0}}
+
+.hud{
+  position:absolute;left:0;right:0;bottom:0;z-index:4;
+  padding:22px 28px 20px;display:flex;align-items:flex-end;gap:26px;
+  background:linear-gradient(0deg,rgba(0,0,0,.92) 20%,transparent);
+}
+.hud-bpm{font-family:var(--mono);line-height:.9;flex:none}
+.hud-bpm b{font-size:52px;font-weight:700;letter-spacing:-.03em}
+.hud-bpm b.pulse{animation:bump .5s var(--ease)}
+.hud-bpm i{font-size:11px;color:var(--dim-2);font-style:normal;margin-left:5px}
+.hud-bpm span{
+  display:block;font-family:var(--sans);font-size:10px;color:var(--dim-2);
+  letter-spacing:.2em;text-transform:uppercase;margin-top:9px;
+}
+#hudChart{flex:1;height:86px;min-width:0}
+.hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px;flex:none}
+.meter{width:150px}
+.meter em{
+  display:block;font-family:var(--mono);font-size:9px;color:var(--dim-2);
+  letter-spacing:.18em;text-transform:uppercase;font-style:normal;margin-bottom:6px;
+  text-align:right;
+}
+.meter .track{height:5px;background:#1e1d26;border-radius:3px;overflow:hidden}
+.meter .track>i{
+  display:block;height:100%;width:100%;border-radius:3px;transform:scaleX(0);transform-origin:0 50%;
+  background:linear-gradient(90deg,var(--cyan),var(--amber),var(--red));
+  transition:transform .3s var(--ease);
+}
+#cool{
+  position:absolute;inset:0;z-index:6;display:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  background:rgba(4,4,7,.88);backdrop-filter:blur(3px);
+}
+#cool.on{display:flex}
+#cool .t{font-family:var(--mono);font-size:13px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase}
+#cool .n{font-family:var(--mono);font-size:46px;font-weight:700;color:var(--red)}
+#cool .s{font-size:12px;color:var(--dim-2);max-width:340px;text-align:center;line-height:1.6}
+
+/* ---------- rezultate ---------- */
+.res-head{display:flex;gap:34px;align-items:center;margin:10px 0 30px;flex-wrap:wrap}
+.gauge{position:relative;width:190px;height:190px;flex:none}
+.gauge canvas{width:190px;height:190px;display:block}
+.gauge .val{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.gauge .val b{font-family:var(--mono);font-size:52px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.gauge .val span{font-size:9px;letter-spacing:.22em;color:var(--dim-2);text-transform:uppercase;margin-top:7px}
+.verdict{flex:1;min-width:300px;line-height:1.75;font-size:14.5px;color:var(--dim)}
+.verdict b{color:var(--txt);font-weight:600}
+.verdict .line{
+  display:block;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+  color:var(--red-soft);font-size:13.5px;
+}
+
+.res-chart{padding:34px 12px 12px;margin-bottom:14px}
+.res-chart canvas{width:100%;height:290px;display:block}
+.legend{display:flex;gap:20px;flex-wrap:wrap;margin:0 0 30px;padding-left:4px}
+.legend div{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim-2)}
+.legend .sw{width:16px;height:2px;border-radius:2px;background:var(--red)}
+.legend .sw.dash{background:repeating-linear-gradient(90deg,var(--dim) 0 4px,transparent 4px 8px);height:2px}
+.legend .sw.dot{width:8px;height:8px;border-radius:50%;background:#fff}
+.legend .sw.cy{width:8px;height:8px;border-radius:50%;background:var(--cyan)}
+.legend .sw.box{width:16px;height:11px;border-radius:2px;background:rgba(255,43,61,.14);border:1px solid rgba(255,43,61,.35)}
+
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:32px}
+th{
+  text-align:left;padding:0 12px 12px;color:var(--dim-2);font-weight:500;
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;
+  border-bottom:1px solid var(--line);
+}
+td{padding:14px 12px;border-bottom:1px solid #131319;font-family:var(--mono);font-size:13px}
+tr:hover td{background:rgba(255,255,255,.018)}
+td.muted{color:var(--dim-2);font-family:var(--sans)}
+.pill{padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600}
+.pill.hi{background:rgba(255,43,61,.16);color:var(--red-soft)}
+.pill.mid{background:rgba(255,176,32,.14);color:var(--amber)}
+.pill.lo{background:rgba(61,220,151,.12);color:var(--green)}
+
+/* ---------- modal ---------- */
+.modal{
+  position:fixed;inset:0;z-index:100;display:none;
+  align-items:center;justify-content:center;background:rgba(3,3,6,.86);
+  backdrop-filter:blur(4px);
+}
+.modal.open{display:flex;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal .box{
+  background:linear-gradient(180deg,var(--panel-2),var(--panel));
+  border:1px solid var(--line-2);border-radius:18px;padding:28px;
+  width:min(480px,92vw);animation:rise .4s var(--ease);
+}
+.modal h3{margin:0 0 6px;font-size:19px;font-weight:800}
+.modal .sub{color:var(--dim-2);font-size:12.5px;margin:0 0 20px;line-height:1.6}
+.opt{
+  border:1px solid var(--line);border-radius:12px;padding:15px 16px;
+  margin-bottom:10px;cursor:pointer;transition:.2s var(--ease);
+  display:flex;gap:13px;align-items:flex-start;
+}
+.opt:hover,.opt:focus-visible{border-color:var(--line-2);background:rgba(255,255,255,.015)}
+.opt.active{border-color:var(--red);background:rgba(255,43,61,.05)}
+.opt .ic{
+  width:30px;height:30px;border-radius:8px;flex:none;display:flex;
+  align-items:center;justify-content:center;font-size:14px;
+  background:rgba(255,255,255,.04);
+}
+.opt b{display:block;font-size:13.5px;margin-bottom:3px;font-weight:600}
+.opt span{color:var(--dim-2);font-size:12px;line-height:1.5}
+.opt.dis{opacity:.38;cursor:not-allowed}
+.opt.dis:hover{border-color:var(--line);background:none}
+</style>
+</head>
+<body data-screen="intro">
+
+<canvas id="bg"></canvas>
+<div id="fx"><div class="scan"></div><div class="grain"></div><div class="vig"></div></div>
+<div id="arousal"></div>
+
+<header id="topbar">
+  <div class="wordmark"><span class="beat" id="beatDot"></span>DOMAIN</div>
+  <div id="srcChip"><span class="dot off" id="srcDot"></span><span id="srcLabel">se pornește…</span></div>
+  <div class="vitals">
+    <div><span class="big" id="bpmNow">--</span><span class="u">BPM</span></div>
+    <div class="z" id="zNow">z 0.0</div>
+  </div>
+  <button id="sndBtn" title="Puls audio">♪</button>
+</header>
+
+<div id="app">
+
+<!-- ══════════ 1 · INTRO ══════════ -->
+<section class="screen active" id="s-intro">
+  <div class="wrap narrow stag">
+    <p class="eyebrow">Signals that Shape Our World</p>
+    <h1 class="hero">DOMAIN</h1>
+    <p class="tag">Horror-ul care se adaptează la corpul tău</p>
+    <p class="lead">
+      Un senzor îți citește pulsul în timp real. Noi găsim momentul exact în care
+      inima ta reacționează la o sperietură, cât de tare o face și cât îți ia să
+      revii — apoi calibrăm intensitatea pe pragul tău personal.
+      <b style="color:var(--txt)">Nu tu alegi dificultatea. O alege corpul tău.</b>
+    </p>
+    <div class="row">
+      <button class="btn pri" id="goCalib">Începe calibrarea</button>
+      <button class="btn" id="skipCalib">Sari peste</button>
+    </div>
+    <p class="hint">
+      Rulează în <b style="color:var(--dim)">mod simulat</b> chiar acum — nu ai nevoie de hardware ca să-l încerci.<br>
+      Pentru senzorul real: Chrome sau Edge, ESP32 pe USB. <kbd>Space</kbd> pornește · <kbd>Esc</kbd> iese
+    </p>
+  </div>
+</section>
+
+<!-- ══════════ 2 · CALIBRARE ══════════ -->
+<section class="screen" id="s-calib">
+  <div class="wrap narrow stag" style="max-width:900px">
+    <h2>Calibrare <span class="accent">·</span> pragul tău de repaus</h2>
+    <p class="lead">
+      Stai nemișcat și respiră în ritmul cercului. Fără să știm cum arată inima ta
+      liniștită, „s-a speriat" nu înseamnă nimic.
+    </p>
+
+    <div class="calib-grid">
+      <div class="panel breath">
+        <div class="ring">
+          <canvas id="ringCv" width="150" height="150"></canvas>
+          <div class="rbpm"><b id="cRing">--</b><i>BPM</i></div>
+        </div>
+        <div class="breath-txt" id="breathTxt">inspiră</div>
+      </div>
+      <div class="panel ecg-panel">
+        <div class="panel-label">semnal · live</div>
+        <canvas id="calibCv"></canvas>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><b id="cBpm">--</b><span>puls mediu</span></div>
+      <div class="tile"><b id="cSd">--</b><span>deviație standard</span></div>
+      <div class="tile"><b id="cRmssd">--<small>ms</small></b><span>RMSSD · HRV</span></div>
+      <div class="tile"><b id="cLeft">--<small>s</small></b><span>rămase</span></div>
+    </div>
+
+    <div class="bar"><i id="calibBar"></i></div>
+    <div class="row" style="margin-top:26px">
+      <button class="btn sm" id="calibAbort">Anulează</button>
+      <button class="btn sm" id="calibNow" style="display:none">Gata, continuă</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 3 · NIVELE ══════════ -->
+<section class="screen" id="s-levels">
+  <div class="wrap stag">
+    <h2>Alege <span class="accent">intensitatea</span></h2>
+    <p class="lead">Baseline-ul tău: <b id="baseSum" style="color:var(--txt);font-family:var(--mono)">--</b><br>
+      Poți alege manual acum — după primul clip, Domain decide singur.</p>
+    <div class="levels" id="levelGrid"></div>
+    <div class="row" style="margin-top:30px">
+      <button class="btn sm" id="backIntro">Înapoi</button>
+      <button class="btn sm" id="recalib">Recalibrează</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 4 · PLAYER ══════════ -->
+<section class="screen" id="s-play">
+  <div class="stage">
+    <video id="clip" playsinline></video>
+    <canvas id="phantom"></canvas>
+    <div id="flash"></div>
+
+    <div class="hud">
+      <div class="hud-bpm">
+        <b id="hudBpm">--</b><i>BPM</i>
+        <span id="hudLevel">—</span>
+      </div>
+      <canvas id="hudChart"></canvas>
+      <div class="hud-right">
+        <div class="meter"><em>nivel de activare</em><div class="track"><i id="fearFill"></i></div></div>
+        <button class="btn sm" id="abortClip">Stop</button>
+      </div>
+    </div>
+
+    <div id="cool">
+      <div class="t">analizăm reacția</div>
+      <div class="n" id="coolN">--</div>
+      <div class="s">Pulsul are nevoie de câteva secunde ca să revină. Măsurăm coada răspunsului — fără ea nu putem calcula timpul de revenire.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 5 · REZULTATE ══════════ -->
+<section class="screen" id="s-results">
+  <div class="wrap stag">
+    <h2>Analiza <span class="accent">sesiunii</span></h2>
+
+    <div class="res-head">
+      <div class="gauge">
+        <canvas id="gaugeCv" width="190" height="190"></canvas>
+        <div class="val"><b id="fearScore">--</b><span>Fear Score</span></div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <div class="panel res-chart">
+      <div class="panel-label">puls · sesiune completă</div>
+      <canvas id="resCv"></canvas>
+    </div>
+    <div class="legend">
+      <div><span class="sw"></span>puls</div>
+      <div><span class="sw dash"></span>baseline personal</div>
+      <div><span class="sw box"></span>fereastră de analiză</div>
+      <div><span class="sw dot"></span>apogeu</div>
+      <div><span class="sw cy"></span>freeze (bradicardie)</div>
+    </div>
+
+    <table id="tbl">
+      <thead><tr>
+        <th>#</th><th>moment</th><th>latență</th><th>Δ BPM</th>
+        <th>z apogeu</th><th>freeze</th><th>revenire</th><th>scor</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="row">
+      <button class="btn pri" id="nextClip">Continuă</button>
+      <button class="btn" id="backLevels">Alege manual</button>
+      <button class="btn sm" id="expJson">Export JSON</button>
+      <button class="btn sm" id="expCsv">Export CSV</button>
+    </div>
+  </div>
+</section>
+
+</div><!-- /#app -->
+
+<!-- ══════════ MODAL SURSĂ ══════════ -->
+<div class="modal" id="srcModal">
+  <div class="box">
+    <h3>Sursa de date</h3>
+    <p class="sub">De unde vine pulsul. Poți schimba oricând, inclusiv în timpul demo-ului.</p>
+    <div class="opt" data-src="serial">
+      <div class="ic">⏻</div>
+      <div><b>ESP32 prin USB · WebSerial</b>
+      <span>Cea mai sigură pe scenă — nu depinde de WiFi. Chrome sau Edge.</span></div>
+    </div>
+    <div class="opt" data-src="sim">
+      <div class="ic">∿</div>
+      <div><b>Mod simulat</b>
+      <span>Puls generat cu răspuns fiziologic realist. Demo complet fără hardware.</span></div>
+    </div>
+    <div class="opt dis" data-src="ws">
+      <div class="ic">≈</div>
+      <div><b>WebSocket la ESP32 <i style="color:var(--dim-2);font-style:normal">— neimplementat</i></b>
+      <span>Wireless. Vezi pasul 3 din ROADMAP.md.</span></div>
+    </div>
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button class="btn sm" id="closeModal">Închide</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   DOMAIN — tot codul, intr-un singur loc.
+   Sectiuni:  0 utilitare · 1 motorul de semnal · 2 sursele de date
+              3 ECG sintetic · 4 grafice · 5 aplicatia
+   ============================================================ */
+const D = {};
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+
+
+/* ══════════════════════════════════════════════════════════
+   0 · UTILITARE DE INTERFATA
+   ══════════════════════════════════════════════════════════ */
+
+/* numere care aluneca spre valoarea noua in loc sa sara brusc */
+const Tween = (() => {
+  const items = new Map();
+  function set(el, value, dec, suffix){
+    if (!el) return;
+    const it = items.get(el) || {cur: value, dec: dec||0, suffix: suffix||''};
+    it.target = value; it.dec = dec||0; it.suffix = suffix||'';
+    if (!items.has(el)) { it.cur = value; items.set(el, it); }
+    items.set(el, it);
+  }
+  function snap(el, value){ const it = items.get(el); if (it) it.cur = value; }
+  function loop(){
+    items.forEach((it, el) => {
+      if (!Number.isFinite(it.target)) return;
+      it.cur += (it.target - it.cur) * 0.22;
+      if (Math.abs(it.target - it.cur) < Math.pow(10, -it.dec)/2) it.cur = it.target;
+      el.textContent = it.cur.toFixed(it.dec) + it.suffix;
+    });
+    requestAnimationFrame(loop);
+  }
+  loop();
+  return {set, snap};
+})();
+
+/* canvas cu densitate corecta de pixeli */
+function fit(cv){
+  const dpr = window.devicePixelRatio || 1;
+  const r = cv.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){
+    cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr);
+  }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w, h};
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   1 · MOTORUL DE SEMNAL
+   ------------------------------------------------------------
+   Aici se intampla tot ce conteaza stiintific:
+     baseline de repaus -> normalizare in z-score -> detectia
+     apogeului dupa fiecare jumpscare -> Fear Score -> adaptare.
+
+   De ce z-score si nu BPM brut: cineva cu puls de repaus 55 si
+   cineva cu 85 nu pot fi comparati direct. Conteaza cu cate
+   deviatii standard sare fata de PROPRIUL lui repaus.
+   ══════════════════════════════════════════════════════════ */
+D.Signal = (function(){
+  const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+  const stdev = (a,m) => {
+    if (a.length < 2) return 0;
+    m = (m===undefined) ? mean(a) : m;
+    return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/(a.length-1));
+  };
+
+  /* fiecare esantion: {t: secunde in contextul curent, bpm, ibi} */
+  class Buffer {
+    constructor(){ this.samples = []; }
+    push(s){ this.samples.push(s); }
+    clear(){ this.samples = []; }
+    get last(){ return this.samples[this.samples.length-1] || null; }
+    range(t0,t1){ const o=[]; for (const s of this.samples) if (s.t>=t0 && s.t<=t1) o.push(s); return o; }
+  }
+
+  /*
+    Ignoram primele `settle` secunde: omul tocmai s-a asezat, senzorul
+    inca se stabilizeaza, iar valorile de acolo strica media.
+    RMSSD = radacina medie patratica a diferentelor succesive intre
+    intervalele R-R. Scade rapid la stres — semnal mai prompt decat BPM-ul.
+  */
+  function computeBaseline(samples, settle){
+    settle = settle===undefined ? 10 : settle;
+    const use = samples.filter(s => s.t >= settle);
+    const src = use.length > 10 ? use : samples;
+    const bpms = src.map(s=>s.bpm).filter(Number.isFinite);
+    if (!bpms.length) return null;
+
+    const m = mean(bpms);
+    let sd = Math.max(stdev(bpms, m), 1.5);   // prag minim: altfel z-score-ul explodeaza
+
+    const ibis = src.map(s=>s.ibi).filter(Number.isFinite);
+    let rmssd = null;
+    if (ibis.length > 5){
+      let acc=0, n=0;
+      for (let i=1;i<ibis.length;i++){
+        const d = ibis[i]-ibis[i-1];
+        if (Math.abs(d) < 300){ acc += d*d; n++; }   // filtram artefactele
+      }
+      if (n) rmssd = Math.sqrt(acc/n);
+    }
+    const quality = bpms.length < 30 ? 'slabă' : (sd > 12 ? 'zgomotoasă' : 'bună');
+    return {bpm:m, sd:sd, rmssd:rmssd, n:bpms.length, quality:quality};
+  }
+
+  const DEFAULT_BASELINE = {bpm:72, sd:4.5, rmssd:42, n:0, quality:'implicită'};
+  const z = (bpm, base) => base ? (bpm - base.bpm)/base.sd : 0;
+
+  /*
+    Fereastra de analiza: [t0 - PRE, t0 + POST].
+      PRE  — referinta imediat dinaintea sperieturii (nu baseline-ul global:
+             pulsul putea fi deja urcat de la sperietura anterioara)
+      POST — 10s acopera aproape orice raspuns simpatic la un jumpscare
+
+    freeze   — scaderea scurta de puls din primele ~2s (raspunsul de inghetare).
+               Nu toata lumea o are, dar cand apare e semnul cel mai curat
+               ca sperietura a fost reala si brusca.
+    apogeu   — maximul de BPM din fereastra
+    latenta  — t_apogeu - t0, tipic 1.5-3.5s
+    revenire — cat dureaza pana scade sub 25% din amplitudine
+  */
+  const PRE = 3.0, POST = 10.0;
+
+  /*
+    nextT = momentul urmatoarei sperieturi. Daca exista si vine la mai
+    putin de POST secunde, taiem fereastra inainte de ea — altfel varful
+    sperieturii urmatoare e atribuit gresit acesteia si latenta iese
+    aberanta (8-9 secunde in loc de 2).
+  */
+  function analyzeScare(buffer, scare, base, nextT){
+    const t0 = scare.t;
+    const postEnd = (Number.isFinite(nextT) && nextT > t0)
+      ? Math.min(t0 + POST, nextT - 0.4) : t0 + POST;
+    const pre = buffer.range(t0 - PRE, t0);
+    const post = buffer.range(t0, postEnd);
+    if (post.length < 3) return null;
+
+    const preBpm = pre.length ? mean(pre.map(s=>s.bpm)) : (base ? base.bpm : post[0].bpm);
+
+    let peak = post[0];
+    for (const s of post) if (s.bpm > peak.bpm) peak = s;
+
+    /* freeze: minimul din primele 2.5s, daca e semnificativ sub referinta */
+    const early = buffer.range(t0, t0 + 2.5);
+    let dip = null;
+    if (early.length){
+      let lo = early[0];
+      for (const s of early) if (s.bpm < lo.bpm) lo = s;
+      if (lo.bpm < preBpm - 2 && lo.t < peak.t) dip = {t: lo.t - t0, drop: preBpm - lo.bpm};
+    }
+
+    const delta = peak.bpm - preBpm;
+    const latency = peak.t - t0;
+    const zPeak = z(peak.bpm, base);
+
+    let recovery = null;
+    if (delta > 1){
+      const thr = preBpm + delta*0.25;
+      for (const s of buffer.range(peak.t, postEnd + 8)){
+        if (s.bpm <= thr){ recovery = s.t - peak.t; break; }
+      }
+    }
+
+    /*
+      Scalele sunt calibrate ca un jumpscare "normal" (+10..12 BPM, ~3
+      deviatii) sa cada in jur de 50, nu la 80. Daca saturezi scorul,
+      logica adaptiva recomanda mereu acelasi lucru si demo-ul isi
+      pierde sensul.
+    */
+    const sDelta = clamp(delta/22, 0, 1);
+    const sZ     = clamp(zPeak/6, 0, 1);
+    const sRec   = recovery === null ? 0.6 : clamp(recovery/14, 0, 1);
+    const sDip   = dip ? 0.06 : 0;
+    const score  = clamp(100*(0.45*sDelta + 0.33*sZ + 0.10*sRec + sDip), 0, 100);
+
+    return {
+      t0, postEnd, intensity: scare.intensity||1, preBpm,
+      peakBpm: peak.bpm, peakT: peak.t, delta, latency, zPeak,
+      freeze: dip, recovery, score,
+      detected: delta >= 2.5 && latency >= 0.4 && latency <= 8
+    };
+  }
+
+  /* ponderam pe intensitate: lipsa reactiei la un scare de intensitate 3
+     spune mai mult decat lipsa reactiei la unul de intensitate 1 */
+  function sessionScore(results){
+    const ok = results.filter(Boolean);
+    if (!ok.length) return {score:0, hits:0, total:0, avgLatency:null, maxDelta:0};
+    let wsum=0, w=0;
+    for (const r of ok){ wsum += r.score*r.intensity; w += r.intensity; }
+    const lats = ok.filter(r=>r.detected).map(r=>r.latency);
+    return {
+      score: wsum/w,
+      hits: ok.filter(r=>r.detected).length,
+      total: ok.length,
+      avgLatency: lats.length ? mean(lats) : null,
+      maxDelta: Math.max.apply(null, ok.map(r=>r.delta))
+    };
+  }
+
+  /* praguri deliberat asimetrice: urcam mai usor decat coboram, ca sa nu
+     blocam pe cineva in "prea usor" din cauza unui singur clip ratat */
+  function adapt(sum, rank){
+    const s = sum.score;
+    let next = rank, why;
+    if (s < 32)      { next = rank+1; why = 'Corpul tău abia a reacționat — urcăm intensitatea.'; }
+    else if (s < 68) { next = rank;   why = 'Reacție în zona optimă — rămânem la acest nivel.'; }
+    else             { next = rank-1; why = 'Reacție foarte puternică — coborâm ca să rămână plăcut.'; }
+    next = clamp(next, 1, 3);
+    if (next === rank && s >= 68) why = 'Reacție puternică, dar ești deja pe nivelul minim.';
+    return {rank: next, reason: why};
+  }
+
+  return {Buffer, computeBaseline, analyzeScare, sessionScore, adapt, z,
+          mean, stdev, DEFAULT_BASELINE, PRE, POST};
+})();
+
+
+/* ══════════════════════════════════════════════════════════
+   2 · SURSELE DE DATE
+   ------------------------------------------------------------
+   PROTOCOL ESP32 (linii terminate cu \n, 115200 baud, ~10 Hz):
+       {"bpm":78.2,"ibi":767}
+   Acceptam si formele degradate, ca sa nu blocam integrarea:
+       BPM:78   ·   78   ·   78,767
+   ══════════════════════════════════════════════════════════ */
+
+D.parseReading = function(line){
+  if (!line) return null;
+  if (line[0] === '{'){
+    try{
+      const o = JSON.parse(line);
+      const bpm = Number(o.bpm !== undefined ? o.bpm : o.BPM);
+      if (!Number.isFinite(bpm) || bpm < 25 || bpm > 230) return null;
+      const ibi = Number(o.ibi !== undefined ? o.ibi : o.IBI);
+      return {bpm, ibi: Number.isFinite(ibi) ? ibi : null};
+    }catch(e){ return null; }
+  }
+  const m = line.match(/(-?\d+(?:\.\d+)?)/g);
+  if (!m) return null;
+  const bpm = Number(m[0]);
+  if (!Number.isFinite(bpm) || bpm < 25 || bpm > 230) return null;
+  const ibi = m[1] !== undefined ? Number(m[1]) : null;
+  return {bpm, ibi: (ibi && ibi > 250 && ibi < 2400) ? ibi : null};
+};
+
+D.SerialSource = class {
+  constructor(){ this.mode='serial'; this.onData=null; this.onError=null;
+                 this.port=null; this.reader=null; this.running=false; this._buf=''; }
+  static supported(){ return 'serial' in navigator; }
+
+  async start(baudRate){
+    if (!D.SerialSource.supported())
+      throw new Error('WebSerial nu e disponibil în acest browser. Folosește Chrome sau Edge.');
+    this.port = await navigator.serial.requestPort();
+    await this.port.open({baudRate: baudRate || 115200});
+    this.running = true;
+    this._loop();
+    return true;
+  }
+  async _loop(){
+    const dec = new TextDecoder();
+    this.reader = this.port.readable.getReader();
+    try{
+      while (this.running){
+        const {value, done} = await this.reader.read();
+        if (done) break;
+        this._buf += dec.decode(value, {stream:true});
+        let i;
+        while ((i = this._buf.indexOf('\n')) >= 0){
+          const line = this._buf.slice(0,i).trim();
+          this._buf = this._buf.slice(i+1);
+          const p = D.parseReading(line);
+          if (p && this.onData) this.onData(p);
+        }
+        if (this._buf.length > 4096) this._buf = '';   // zgomot pe serial
+      }
+    }catch(e){ if (this.onError) this.onError(e); }
+    finally{ try{ this.reader.releaseLock(); }catch(e){} }
+  }
+  async stop(){
+    this.running = false;
+    try{ if (this.reader) await this.reader.cancel(); }catch(e){}
+    try{ if (this.port) await this.port.close(); }catch(e){}
+    this.port = null; this.reader = null;
+  }
+  triggerScare(){}   /* sursa reala nu stie de jumpscare-uri */
+};
+
+/*
+  Simulator fiziologic — ca sa poti dezvolta si prezenta fara senzor.
+
+  Model:
+    drift lent + aritmie sinusala respiratorie + zgomot de senzor
+    raspuns la scare:
+      freeze : cadere scurta de 3-6 BPM in jurul secundei 0.6
+      varf   : (1-e^(-t/0.9)) * e^(-t/5.5), apogeu pe la ~2s
+      coada  : revenire exponentiala in 10-15s
+*/
+D.SimSource = class {
+  constructor(opts){
+    opts = opts || {};
+    this.mode='sim'; this.onData=null; this.hz = opts.hz || 10;
+    this.base = opts.base || (62 + Math.random()*18);
+    /* 0.35 = om de piatra, 1.7 = sare de pe scaun. Intervalul e larg
+       intentionat, ca demo-ul sa produca toate cele trei decizii adaptive. */
+    this.sensitivity = opts.sensitivity || (0.35 + Math.random()*1.35);
+    this.scares = []; this.t = 0; this._timer = null;
+    this._norm = this._normalize();
+  }
+  _shape(a){ return a <= 0 ? 0 : (1 - Math.exp(-a/0.9)) * Math.exp(-a/5.5); }
+  _normalize(){ let mx=0; for (let a=0;a<20;a+=0.05) mx = Math.max(mx, this._shape(a)); return mx||1; }
+
+  async start(){ this.t = 0; this._timer = setInterval(()=>this._tick(), 1000/this.hz); return true; }
+  stop(){ clearInterval(this._timer); this._timer = null; this.scares = []; }
+
+  triggerScare(intensity){
+    const amp = (5 + (intensity||1)*4.5) * this.sensitivity * (0.8 + Math.random()*0.5);
+    this.scares.push({at:this.t, amp:amp, freeze: Math.random() < 0.65});
+    if (this.scares.length > 12) this.scares.shift();
+  }
+
+  _tick(){
+    this.t += 1/this.hz;
+    const t = this.t;
+    /* Variabilitatea de repaus e intentionat generoasa: un puls real
+       "plat" nu exista, iar daca simulatorul e prea curat, deviatia
+       standard din calibrare iese sub prag si z-score-urile explodeaza. */
+    let bpm = this.base
+      + 3.0*Math.sin(t/6.4)
+      + 2.0*Math.sin(t/23.0 + 1.1)
+      + 3.2*Math.sin(2*Math.PI*0.25*t)
+      + (Math.random()-0.5)*2.0;
+
+    for (const s of this.scares){
+      const a = t - s.at;
+      if (a < 0 || a > 25) continue;
+      if (s.freeze) bpm -= (3 + s.amp*0.14) * Math.exp(-Math.pow(a-0.6,2)/(2*0.30*0.30));
+      bpm += s.amp * this._shape(a) / this._norm;
+    }
+    bpm = clamp(bpm, 38, 205);
+    if (this.onData) this.onData({bpm, ibi: 60000/bpm + (Math.random()-0.5)*46});
+  }
+};
+
+
+/* ══════════════════════════════════════════════════════════
+   3 · ECG SINTETIC (decorativ)
+   ------------------------------------------------------------
+   Morfologia P-Q-R-S-T ca suma de gaussiene. Ritmul vine din
+   BPM-ul REAL masurat; forma undei e reconstruita, nu masurata —
+   senzorul de puls nu da ECG. E acolo pentru ca un monitor
+   cardiac care arata ca un monitor cardiac vinde ideea instant.
+   ══════════════════════════════════════════════════════════ */
+const ECG = (() => {
+  const G = [
+    {c:0.13, a: 0.14, w:0.028},   // P
+    {c:0.20, a:-0.10, w:0.008},   // Q
+    {c:0.22, a: 1.00, w:0.008},   // R
+    {c:0.245,a:-0.26, w:0.011},   // S
+    {c:0.38, a: 0.26, w:0.048}    // T
+  ];
+  function wave(p){
+    let v = 0;
+    for (const g of G) v += g.a * Math.exp(-Math.pow(p-g.c,2)/(2*g.w*g.w));
+    return v;
+  }
+  /* renderer in "sweep": linia se deseneaza spre dreapta si sterge in fata,
+     exact ca pe un monitor din spital */
+  class Sweep {
+    constructor(cv, opts){
+      opts = opts || {};
+      this.cv = cv; this.x = 0; this.phase = 0; this.prevY = null;
+      this.pxPerSec = opts.pxPerSec || 120;
+      this.color = opts.color || '#ff2b3d';
+      this.width = opts.width || 1.6;
+      this.amp   = opts.amp || 0.34;
+      this.midFrac = opts.midFrac || 0.55;
+      this.glow  = opts.glow !== false;
+      this.onBeat = null;
+      this._w = 0; this._h = 0;
+      this._last = performance.now();
+    }
+    resize(){
+      const f = fit(this.cv);
+      if (f.w !== this._w || f.h !== this._h){
+        this._w = f.w; this._h = f.h; this.x = 0; this.prevY = null;
+        f.ctx.clearRect(0,0,f.w,f.h);
+      }
+      return f;
+    }
+    step(bpm){
+      const now = performance.now();
+      let dt = (now - this._last)/1000;
+      this._last = now;
+      if (dt > 0.1) dt = 0.1;
+
+      const {ctx, w, h} = this.resize();
+      const dx = this.pxPerSec * dt;
+      const beats = (bpm/60) * dt;
+      const prevPhase = this.phase;
+      this.phase = (this.phase + beats) % 1;
+      /* varful R a trecut in acest cadru? */
+      const crossed = (prevPhase < 0.22 && (this.phase > 0.22 || this.phase < prevPhase));
+      if (crossed && this.onBeat) this.onBeat();
+
+      const mid = h*this.midFrac;
+      const y = mid - wave(this.phase) * h * this.amp;
+      const x0 = this.x, x1 = this.x + dx;
+
+      /* stergem o banda in fata cursorului */
+      ctx.clearRect(x1, 0, 26, h);
+
+      if (this.prevY !== null && x1 <= w){
+        ctx.beginPath();
+        ctx.moveTo(x0, this.prevY); ctx.lineTo(x1, y);
+        ctx.strokeStyle = this.color; ctx.lineWidth = this.width;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        if (this.glow){ ctx.shadowColor = this.color; ctx.shadowBlur = 9; }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      this.prevY = y;
+      this.x = x1;
+      if (this.x >= w){ this.x = 0; this.prevY = null; ctx.clearRect(0,0,30,h); }
+    }
+  }
+  return {wave, Sweep};
+})();
+
+
+/* ══════════════════════════════════════════════════════════
+   4 · GRAFICE
+   ══════════════════════════════════════════════════════════ */
+const Chart = (() => {
+
+  function bounds(samples, base){
+    let lo = base ? base.bpm - 9 : 55, hi = base ? base.bpm + 9 : 95;
+    for (const s of samples){ if (s.bpm < lo) lo = s.bpm; if (s.bpm > hi) hi = s.bpm; }
+    const pad = (hi-lo)*0.14 + 1;
+    return {lo: lo-pad, hi: hi+pad};
+  }
+  const mapY = (bpm,b,h) => h - ((bpm-b.lo)/(b.hi-b.lo))*h;
+
+  function grid(ctx,w,h,b,base){
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(255,255,255,.035)'; ctx.lineWidth = 1;
+    for (let i=1;i<4;i++){
+      const y = Math.round(h*i/4)+.5;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+    if (base){
+      const y1 = mapY(base.bpm+base.sd,b,h), y2 = mapY(base.bpm-base.sd,b,h);
+      ctx.fillStyle = 'rgba(76,201,240,.05)';
+      ctx.fillRect(0, y1, w, y2-y1);
+      const y = mapY(base.bpm,b,h);
+      ctx.strokeStyle = 'rgba(76,201,240,.4)';
+      ctx.setLineDash([5,5]);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  function trace(ctx, samples, t0, t1, b, w, h, fill){
+    if (samples.length < 2) return;
+    const X = t => ((t-t0)/(t1-t0))*w;
+    if (fill){
+      ctx.beginPath();
+      samples.forEach((s,i)=>{ const x=X(s.t), y=mapY(s.bpm,b,h); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+      ctx.lineTo(X(samples[samples.length-1].t), h);
+      ctx.lineTo(X(samples[0].t), h); ctx.closePath();
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,'rgba(255,43,61,.26)'); g.addColorStop(1,'rgba(255,43,61,0)');
+      ctx.fillStyle = g; ctx.fill();
+    }
+    ctx.beginPath();
+    samples.forEach((s,i)=>{ const x=X(s.t), y=mapY(s.bpm,b,h); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+    ctx.strokeStyle = '#ff2b3d'; ctx.lineWidth = 2;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.shadowColor = 'rgba(255,43,61,.5)'; ctx.shadowBlur = 8;
+    ctx.stroke(); ctx.shadowBlur = 0;
+  }
+
+  /* ---------- grafic live, ultimele N secunde ---------- */
+  function live(cv, samples, base, windowSec, markers){
+    const {ctx,w,h} = fit(cv);
+    windowSec = windowSec || 30;
+    const last = samples[samples.length-1];
+    if (!last){ ctx.clearRect(0,0,w,h); return; }
+    const t1 = Math.max(last.t, windowSec), t0 = t1 - windowSec;
+    const vis = samples.filter(s => s.t >= t0);
+    const b = bounds(vis, base);
+    grid(ctx,w,h,b,base);
+
+    (markers||[]).forEach(m => {
+      if (m.t < t0 || m.t > t1) return;
+      const x = ((m.t-t0)/windowSec)*w;
+      ctx.strokeStyle = 'rgba(255,43,61,.5)'; ctx.lineWidth = 1;
+      ctx.setLineDash([3,4]);
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    trace(ctx, vis, t0, t1, b, w, h, true);
+    const x = ((last.t-t0)/windowSec)*w, y = mapY(last.bpm,b,h);
+    ctx.fillStyle = '#fff'; ctx.shadowColor = '#ff2b3d'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill(); ctx.shadowBlur = 0;
+  }
+
+  /* ---------- graficul de rezultate, adnotat ---------- */
+  function results(cv, samples, base, an){
+    const {ctx,w,h} = fit(cv);
+    if (samples.length < 2){ ctx.clearRect(0,0,w,h); return; }
+    const t0 = samples[0].t, t1 = samples[samples.length-1].t;
+    const b = bounds(samples, base);
+    grid(ctx,w,h,b,base);
+    const X = t => ((t-t0)/(t1-t0))*w;
+
+    an.forEach(a => {
+      if (!a) return;
+      ctx.fillStyle = 'rgba(255,43,61,.06)';
+      ctx.fillRect(X(a.t0), 0, X(a.postEnd)-X(a.t0), h);
+      ctx.strokeStyle = 'rgba(255,43,61,.55)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(X(a.t0)+.5, 0); ctx.lineTo(X(a.t0)+.5, h); ctx.stroke();
+    });
+
+    trace(ctx, samples, t0, t1, b, w, h, true);
+
+    ctx.font = '600 11px ui-monospace,monospace'; ctx.textAlign = 'center';
+    an.forEach((a,i) => {
+      if (!a) return;
+      const x = X(a.peakT), y = mapY(a.peakBpm,b,h);
+      if (a.freeze){
+        const fx = X(a.t0 + a.freeze.t);
+        ctx.fillStyle = '#4cc9f0'; ctx.shadowColor = '#4cc9f0'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(fx, mapY(a.preBpm - a.freeze.drop, b, h), 3.4, 0, 7); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      ctx.strokeStyle = a.detected ? 'rgba(255,255,255,.3)' : 'rgba(120,120,130,.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x, Math.max(14, y-24)); ctx.stroke();
+      ctx.fillStyle = a.detected ? '#fff' : '#6a6875';
+      ctx.shadowColor = 'rgba(255,255,255,.5)'; ctx.shadowBlur = a.detected ? 10 : 0;
+      ctx.beginPath(); ctx.arc(x,y,4,0,7); ctx.fill(); ctx.shadowBlur = 0;
+      ctx.fillStyle = a.detected ? '#ffd7db' : '#6a6875';
+      ctx.fillText('#'+(i+1)+'  +'+a.delta.toFixed(1), x, Math.max(11, y-30));
+    });
+
+    ctx.fillStyle = '#4a4855'; ctx.textAlign = 'left';
+    ctx.font = '10px ui-monospace,monospace';
+    const step = (t1-t0) > 90 ? 20 : 10;
+    for (let s = Math.ceil(t0/step)*step; s <= t1; s += step)
+      ctx.fillText(s+'s', X(s)+4, h-6);
+  }
+
+  /* ---------- cadranul de Fear Score ---------- */
+  function gauge(cv, score){
+    const {ctx,w,h} = fit(cv);
+    ctx.clearRect(0,0,w,h);
+    const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 13;
+    const a0 = Math.PI*0.75, a1 = Math.PI*2.25;
+
+    ctx.lineCap = 'round'; ctx.lineWidth = 9;
+    ctx.strokeStyle = '#1a1a24';
+    ctx.beginPath(); ctx.arc(cx,cy,r,a0,a1); ctx.stroke();
+
+    /* gradatii */
+    ctx.strokeStyle = '#22222e'; ctx.lineWidth = 1.5;
+    for (let i=0;i<=10;i++){
+      const a = a0 + (a1-a0)*i/10;
+      const r1 = r-15, r2 = r-(i%5===0?21:18);
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+      ctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
+      ctx.stroke();
+    }
+
+    const ae = a0 + (a1-a0)*clamp(score,0,100)/100;
+    const g = ctx.createLinearGradient(0,h,w,0);
+    g.addColorStop(0,'#4cc9f0'); g.addColorStop(.5,'#ffb020'); g.addColorStop(1,'#ff2b3d');
+    ctx.strokeStyle = g; ctx.lineWidth = 9;
+    ctx.shadowColor = 'rgba(255,43,61,.55)'; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(cx,cy,r,a0,ae); ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#ff2b3d'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(cx+Math.cos(ae)*r, cy+Math.sin(ae)*r, 5, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  return {live, results, gauge};
+})();
+
+
+/* ══════════════════════════════════════════════════════════
+   5 · NIVELELE
+   ------------------------------------------------------------
+   `t` = secunda exacta a jumpscare-ului in clip. Precizia asta e
+   critica: latenta masurata e diferenta dintre apogeul pulsului si
+   acest timestamp. O eroare de o secunda strica toata analiza.
+   Daca fisierul video lipseste, playerul intra in "mod fantoma".
+   ══════════════════════════════════════════════════════════ */
+D.LEVELS = [
+  { id:'easy', name:'Ușor', rank:1,
+    desc:'Tensiune atmosferică, sperieturi rare și telegrafiate. Punctul de plecare pentru oricine.',
+    clips:[
+      {id:'e1', title:'Coridorul', src:'media/easy-1.mp4', duration:45,
+       scares:[{t:14,intensity:1},{t:31,intensity:1}]},
+      {id:'e2', title:'Subsolul', src:'media/easy-2.mp4', duration:50,
+       scares:[{t:18,intensity:1},{t:35,intensity:2}]}
+    ]},
+  { id:'medium', name:'Mediu', rank:2,
+    desc:'Ritm mai alert, sperieturi mai dese și mult mai puțin previzibile.',
+    clips:[
+      {id:'m1', title:'Pădurea', src:'media/medium-1.mp4', duration:55,
+       scares:[{t:12,intensity:2},{t:27,intensity:2},{t:44,intensity:3}]},
+      {id:'m2', title:'Spitalul', src:'media/medium-2.mp4', duration:60,
+       scares:[{t:9,intensity:2},{t:24,intensity:3},{t:41,intensity:2},{t:53,intensity:3}]}
+    ]},
+  { id:'hard', name:'Greu', rank:3,
+    desc:'Fără pauze. Sperieturi suprapuse, sunet agresiv, zero telegrafiere.',
+    clips:[
+      {id:'h1', title:'Azilul', src:'media/hard-1.mp4', duration:60,
+       scares:[{t:7,intensity:3},{t:19,intensity:3},{t:28,intensity:2},{t:39,intensity:3},{t:50,intensity:3}]},
+      {id:'h2', title:'Ultimul etaj', src:'media/hard-2.mp4', duration:65,
+       scares:[{t:6,intensity:3},{t:16,intensity:3},{t:25,intensity:3},{t:36,intensity:3},{t:47,intensity:3},{t:58,intensity:3}]}
+    ]}
+];
+D.levelByRank = r => D.LEVELS.find(l=>l.rank===r) || D.LEVELS[D.LEVELS.length-1];
+
+
+/* ══════════════════════════════════════════════════════════
+   6 · APLICATIA
+   ══════════════════════════════════════════════════════════ */
+(function(){
+  const S = D.Signal;
+  const CALIB_SECONDS = 45;
+
+  const app = {
+    screen:'intro', source:null, buffer:new S.Buffer(), baseline:null,
+    ctx:'idle', t0wall:0, level:null, clipIdx:0, clip:null,
+    firedScares:[], session:null, history:[], bpm:70
+  };
+  window.DOMAIN = app;        // pentru debug in consola
+
+  /* ---------- navigare ---------- */
+  function goto(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $('s-'+name).classList.add('active');
+    app.screen = name;
+    document.body.dataset.screen = name;
+  }
+
+  function ctxTime(){
+    if (app.ctx === 'calib') return (performance.now() - app.t0wall)/1000;
+    if (app.ctx === 'clip')  return player.time();
+    return 0;
+  }
+
+  /* ---------- receptia datelor ---------- */
+  function onReading(r){
+    app.bpm = r.bpm;
+    if (app.ctx !== 'idle') app.buffer.push({t: ctxTime(), bpm: r.bpm, ibi: r.ibi});
+
+    Tween.set($('bpmNow'), r.bpm, 0);
+    const zz = app.baseline ? S.z(r.bpm, app.baseline) : 0;
+    $('zNow').textContent = 'z ' + zz.toFixed(1);
+
+    if (app.screen === 'calib') Tween.set($('cRing'), r.bpm, 0);
+    if (app.screen === 'play'){
+      Tween.set($('hudBpm'), r.bpm, 0);
+      applyArousal(zz);
+    }
+  }
+
+  async function useSource(mode){
+    if (app.source){ try{ await app.source.stop(); }catch(e){} app.source = null; }
+    if (mode === 'serial'){
+      const s = new D.SerialSource();
+      s.onData = onReading;
+      s.onError = () => setSrc('off','eroare pe serial');
+      try{
+        await s.start(115200);
+        app.source = s; setSrc('live','ESP32 · USB');
+      }catch(e){
+        alert('Nu m-am putut conecta la ESP32:\n\n' + e.message + '\n\nRămân în mod simulat.');
+        return useSource('sim');
+      }
+    } else {
+      const s = new D.SimSource();
+      s.onData = onReading;
+      await s.start();
+      app.source = s;
+      setSrc('sim','simulat · repaus ' + Math.round(s.base) + ' BPM');
+    }
+    document.querySelectorAll('.opt').forEach(o =>
+      o.classList.toggle('active', o.dataset.src === (app.source ? app.source.mode : '')));
+    closeModal();
+  }
+  function setSrc(cls, txt){ $('srcDot').className = 'dot '+cls; $('srcLabel').textContent = txt; }
+
+  /* ---------- efecte ---------- */
+  function applyArousal(z){
+    const k = clamp(z/3.2, 0, 1);
+    $('arousal').style.opacity = (k*0.85).toFixed(2);
+    $('fearFill').style.transform = 'scaleX(' + k.toFixed(3) + ')';
+    document.body.classList.toggle('shake', z > 2.3);
+  }
+  function clearArousal(){
+    $('arousal').style.opacity = 0;
+    document.body.classList.remove('shake');
+    $('fearFill').style.transform = 'scaleX(0)';
+  }
+
+  /* puls audio, declansat din acelasi varf R ca animatiile */
+  const heart = {
+    ac:null, on:false,
+    toggle(){ this.on = !this.on; $('sndBtn').classList.toggle('on', this.on);
+              if (this.on) this.ensure(); },
+    ensure(){
+      try{ this.ac = this.ac || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+      if (this.ac.state === 'suspended') this.ac.resume();
+    },
+    beat(){
+      if (!this.on || !this.ac) return;
+      this._thump(0.16, 0);
+      this._thump(0.09, 0.15);
+    },
+    _thump(peak, delay){
+      const ac = this.ac, t = ac.currentTime + delay;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(62, t);
+      o.frequency.exponentialRampToValueAtTime(34, t+0.11);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.16);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t+0.2);
+    }
+  };
+
+  /* ---------- ECG-uri decorative ---------- */
+  const bgSweep = new ECG.Sweep($('bg'), {pxPerSec:150, amp:0.10, width:1.4,
+                                          midFrac:0.84, color:'#ff2b3d'});
+  const ringCtx = $('ringCv').getContext('2d');
+  bgSweep.onBeat = () => {
+    $('beatDot').classList.remove('on'); void $('beatDot').offsetWidth;
+    $('beatDot').classList.add('on');
+    $('bpmNow').classList.remove('pulse'); void $('bpmNow').offsetWidth;
+    $('bpmNow').classList.add('pulse');
+    if (app.screen === 'play'){
+      $('hudBpm').classList.remove('pulse'); void $('hudBpm').offsetWidth;
+      $('hudBpm').classList.add('pulse');
+    }
+    heart.beat();
+    ringPulse = 1;
+  };
+
+  /* inelul de calibrare: ghid de respiratie + puls */
+  let ringPulse = 0;
+  function drawRing(){
+    const cv = $('ringCv'), dpr = window.devicePixelRatio||1;
+    if (cv.width !== 150*dpr){ cv.width = 150*dpr; cv.height = 150*dpr; }
+    const ctx = ringCtx;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,150,150);
+    const cx = 75, cy = 75;
+
+    /* ghid de respiratie: 4s inspir, 6s expir */
+    const per = 10, tt = (performance.now()/1000) % per;
+    const inh = tt < 4;
+    const p = inh ? tt/4 : (tt-4)/6;
+    const e = inh ? (1-Math.cos(Math.PI*p))/2 : (1+Math.cos(Math.PI*p))/2;
+    const rB = 34 + e*22;
+
+    const txt = $('breathTxt');
+    if (txt.textContent !== (inh?'inspiră':'expiră')) txt.textContent = inh?'inspiră':'expiră';
+    txt.classList.toggle('in', inh);
+
+    ctx.beginPath(); ctx.arc(cx,cy,rB,0,7);
+    ctx.fillStyle = 'rgba(76,201,240,'+(0.05+e*0.05).toFixed(3)+')'; ctx.fill();
+    ctx.strokeStyle = 'rgba(76,201,240,'+(0.2+e*0.3).toFixed(3)+')';
+    ctx.lineWidth = 1; ctx.stroke();
+
+    /* inelul exterior pulsand pe bataia reala */
+    ringPulse *= 0.90;
+    const rP = 64 + ringPulse*5;
+    ctx.beginPath(); ctx.arc(cx,cy,rP,0,7);
+    ctx.strokeStyle = 'rgba(255,43,61,'+(0.25+ringPulse*0.6).toFixed(3)+')';
+    ctx.lineWidth = 1.5 + ringPulse*1.5;
+    ctx.shadowColor = '#ff2b3d'; ctx.shadowBlur = ringPulse*14;
+    ctx.stroke(); ctx.shadowBlur = 0;
+  }
+
+  const calibSweep = new ECG.Sweep($('calibCv'), {pxPerSec:170, amp:0.36, width:1.8});
+
+  /* bucla globala de animatie */
+  (function frame(){
+    bgSweep.step(app.bpm);
+    if (app.screen === 'calib'){ calibSweep.step(app.bpm); drawRing(); }
+    requestAnimationFrame(frame);
+  })();
+
+  /* ---------- CALIBRARE ---------- */
+  const calib = {
+    raf:null,
+    async begin(){
+      if (!app.source) await useSource('sim');
+      app.buffer.clear(); app.ctx = 'calib'; app.t0wall = performance.now();
+      $('calibNow').style.display = 'none';
+      goto('calib');
+      this.loop();
+    },
+    loop(){
+      const t = ctxTime();
+      Tween.set($('cLeft'), Math.max(0, CALIB_SECONDS-t), 0, 's');
+      $('calibBar').style.transform = 'scaleX(' + Math.min(1, t/CALIB_SECONDS).toFixed(4) + ')';
+      if (t > 15) $('calibNow').style.display = '';
+
+      const p = S.computeBaseline(app.buffer.samples, Math.min(10, t/2));
+      if (p){
+        Tween.set($('cBpm'), p.bpm, 1);
+        Tween.set($('cSd'), p.sd, 2);
+        if (p.rmssd) Tween.set($('cRmssd'), p.rmssd, 0, 'ms');
+      }
+      if (t >= CALIB_SECONDS) return this.finish();
+      this.raf = requestAnimationFrame(()=>this.loop());
+    },
+    finish(){
+      cancelAnimationFrame(this.raf);
+      app.baseline = S.computeBaseline(app.buffer.samples, 10) || S.DEFAULT_BASELINE;
+      app.ctx = 'idle';
+      showLevels();
+    },
+    abort(){ cancelAnimationFrame(this.raf); app.ctx = 'idle'; goto('intro'); }
+  };
+
+  /* ---------- NIVELE ---------- */
+  function showLevels(rec){
+    const b = app.baseline || S.DEFAULT_BASELINE;
+    $('baseSum').textContent =
+      b.bpm.toFixed(0)+' BPM  ±'+b.sd.toFixed(1) +
+      (b.rmssd ? '   ·   RMSSD '+b.rmssd.toFixed(0)+'ms' : '') +
+      '   ·   calitate '+b.quality;
+
+    const grid = $('levelGrid'); grid.innerHTML = '';
+    D.LEVELS.forEach((L,i) => {
+      const card = document.createElement('div');
+      card.className = 'lvl' + (rec === L.rank ? ' rec' : '');
+      card.tabIndex = 0; card.setAttribute('role','button');
+      card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); card.click(); } };
+      const pips = [1,2,3].map(k => '<i class="'+(k<=L.rank?'on':'')+'"></i>').join('');
+      const n = L.clips.reduce((s,c)=>s+c.scares.length,0);
+      card.innerHTML =
+        (rec === L.rank ? '<div class="rectag">recomandat</div>' : '') +
+        '<div class="num">0'+(i+1)+'</div>' +
+        '<h3>'+L.name+'</h3><p>'+L.desc+'</p>' +
+        '<div class="pips">'+pips+'</div>' +
+        '<div class="meta">'+L.clips.length+' clipuri · '+n+' sperieturi adnotate</div>';
+      card.onclick = () => startClip(L, 0);
+      grid.appendChild(card);
+    });
+    goto('levels');
+  }
+
+  /* ---------- PLAYER ---------- */
+  const player = {
+    mode:'video', raf:null, phantomStart:0, endedAt:null, coolFrom:0,
+    coolUntil:0, nextScare:0,
+
+    time(){
+      if (this.endedAt !== null) return this.endedAt + (performance.now()-this.coolFrom)/1000;
+      if (this.mode === 'video') return $('clip').currentTime;
+      return (performance.now()-this.phantomStart)/1000;
+    },
+
+    start(clip){
+      const v = $('clip'), ph = $('phantom');
+      this.endedAt = null; this.nextScare = 0;
+      app.firedScares = []; app.buffer.clear(); app.ctx = 'clip';
+      $('cool').classList.remove('on');
+      heart.ensure();
+
+      let started = false;
+      const toPhantom = () => {
+        if (started) return; started = true;
+        this.mode = 'phantom';
+        v.classList.remove('on'); ph.classList.add('on');
+        this.phantomStart = performance.now();
+        this.loop();
+      };
+      v.classList.remove('on'); ph.classList.remove('on');
+      v.onerror = toPhantom;
+      v.onloadedmetadata = () => {
+        if (started) return; started = true;
+        this.mode = 'video'; v.classList.add('on');
+        v.currentTime = 0;
+        v.play().catch(toPhantom);
+        this.loop();
+      };
+      v.onended = () => this.finish();
+      v.src = clip.src; v.load();
+      /* daca fisierul nu exista, unele browsere nu dau 'error' imediat */
+      setTimeout(toPhantom, 1200);
+    },
+
+    loop(){
+      const t = this.time(), clip = app.clip;
+
+      while (this.nextScare < clip.scares.length && t >= clip.scares[this.nextScare].t)
+        this.fire(clip.scares[this.nextScare++]);
+
+      if (this.mode === 'phantom' && this.endedAt === null) this.drawPhantom(t, clip);
+
+      Chart.live($('hudChart'), app.buffer.samples, app.baseline, 30,
+                 app.firedScares.map(s=>({t:s.t})));
+
+      if (this.endedAt === null && this.mode === 'phantom' && t >= clip.duration)
+        return this.finish();
+
+      /* cooldown: mai colectam date dupa ultima sperietura, altfel nu
+         putem masura apogeul si revenirea pentru ea */
+      if (this.endedAt !== null){
+        if (t >= this.coolUntil) return analyzeAndShow();
+        $('coolN').textContent = Math.max(0, this.coolUntil - t).toFixed(0) + 's';
+      }
+      this.raf = requestAnimationFrame(()=>this.loop());
+    },
+
+    fire(sc){
+      app.firedScares.push(sc);
+      if (app.source && app.source.triggerScare) app.source.triggerScare(sc.intensity);
+      const f = $('flash');
+      f.classList.remove('hit'); void f.offsetWidth; f.classList.add('hit');
+    },
+
+    /* mod fara video: ecran negru + zgomot + cronometru.
+       Permite testarea intregului pipeline inainte sa aveti clipurile. */
+    drawPhantom(t, clip){
+      const {ctx,w,h} = fit($('phantom'));
+      ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(255,255,255,.022)';
+      for (let i=0;i<120;i++) ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#43414f'; ctx.font = '11px ui-monospace,monospace';
+      ctx.fillText('CLIP LIPSĂ · '+clip.src+' · rulez în mod fantomă', w/2, h/2 - 46);
+
+      const prog = clamp(t/clip.duration, 0, 1);
+      ctx.fillStyle = '#4d4a58'; ctx.font = '600 46px ui-monospace,monospace';
+      ctx.fillText(t.toFixed(1)+'s', w/2, h/2 + 4);
+
+      const bw = Math.min(360, w*0.4);
+      ctx.fillStyle = '#1a1a22'; ctx.fillRect(w/2-bw/2, h/2+26, bw, 3);
+      ctx.fillStyle = '#ff2b3d'; ctx.fillRect(w/2-bw/2, h/2+26, bw*prog, 3);
+
+      const nx = clip.scares[this.nextScare];
+      ctx.fillStyle = '#2f2f3a'; ctx.font = '10px ui-monospace,monospace';
+      ctx.fillText(nx ? 'următorul jumpscare la '+nx.t+'s'
+                      : 'toate sperieturile au trecut', w/2, h/2 + 54);
+    },
+
+    finish(){
+      const t = this.time();
+      this.endedAt = t; this.coolFrom = performance.now();
+      const last = app.clip.scares[app.clip.scares.length-1];
+      this.coolUntil = Math.max(t+1.5, (last?last.t:0) + S.POST + 1);
+      try{ $('clip').pause(); }catch(e){}
+      $('cool').classList.add('on');
+      this.raf = requestAnimationFrame(()=>this.loop());
+    },
+
+    stop(){
+      cancelAnimationFrame(this.raf);
+      try{ $('clip').pause(); }catch(e){}
+      $('cool').classList.remove('on');
+      clearArousal(); app.ctx = 'idle';
+    }
+  };
+
+  function startClip(level, idx){
+    app.level = level;
+    app.clipIdx = idx % level.clips.length;
+    app.clip = level.clips[app.clipIdx];
+    $('hudLevel').textContent = level.name + ' · ' + app.clip.title;
+    goto('play');
+    player.start(app.clip);
+  }
+
+  /* ---------- ANALIZA ---------- */
+  function analyzeAndShow(){
+    player.stop();
+    const base = app.baseline || S.DEFAULT_BASELINE;
+    const sc = app.clip.scares;
+    const an = sc.map((s,i)=>S.analyzeScare(app.buffer, s, base, sc[i+1] ? sc[i+1].t : null));
+    const sum = S.sessionScore(an);
+    const dec = S.adapt(sum, app.level.rank);
+
+    app.session = {
+      at:new Date().toISOString(), level:app.level.id, clip:app.clip.id,
+      baseline:base, analyses:an, summary:sum, decision:dec,
+      samples:app.buffer.samples.slice()
+    };
+    app.history.push(app.session);
+
+    const nextL = D.levelByRank(dec.rank);
+    $('verdict').innerHTML =
+      '<b>'+sum.hits+' din '+sum.total+'</b> sperieturi au produs o reacție măsurabilă.' +
+      (sum.avgLatency !== null
+        ? ' Latența medie până la apogeu a fost de <b>'+sum.avgLatency.toFixed(1)+'s</b>.' : '') +
+      ' Creșterea maximă față de referință: <b>+'+sum.maxDelta.toFixed(1)+' BPM</b>.' +
+      '<span class="line">'+dec.reason+' Următorul nivel: <b style="color:var(--red)">'+nextL.name+'</b>.</span>';
+
+    $('nextClip').textContent = 'Continuă · ' + nextL.name;
+    $('nextClip').onclick = () => startClip(nextL, nextL.rank === app.level.rank ? app.clipIdx+1 : 0);
+
+    const tb = $('tbl').querySelector('tbody'); tb.innerHTML = '';
+    an.forEach((a,i) => {
+      const tr = document.createElement('tr');
+      if (!a){
+        tr.innerHTML = '<td>'+(i+1)+'</td><td class="muted" colspan="7">date insuficiente</td>';
+      } else {
+        const cls = a.score > 66 ? 'hi' : a.score > 33 ? 'mid' : 'lo';
+        tr.innerHTML =
+          '<td style="color:var(--dim-2)">'+(i+1)+'</td>' +
+          '<td>'+a.t0.toFixed(1)+'s</td>' +
+          '<td>'+(a.detected ? a.latency.toFixed(2)+'s' : '<span style="color:var(--dim-2)">—</span>')+'</td>' +
+          '<td style="color:'+(a.delta>0?'var(--red-soft)':'var(--dim)')+'">'+(a.delta>=0?'+':'')+a.delta.toFixed(1)+'</td>' +
+          '<td>'+a.zPeak.toFixed(2)+'</td>' +
+          '<td'+(a.freeze?' style="color:var(--cyan)"':' class="muted"')+'>' +
+            (a.freeze ? '−'+a.freeze.drop.toFixed(1)+' @'+a.freeze.t.toFixed(1)+'s' : '—')+'</td>' +
+          '<td>'+(a.recovery===null
+            ? '<span style="color:var(--dim-2)">>'+Math.max(0,a.postEnd-a.peakT).toFixed(0)+'s</span>'
+            : a.recovery.toFixed(1)+'s')+'</td>' +
+          '<td><span class="pill '+cls+'">'+a.score.toFixed(0)+'</span></td>';
+      }
+      tb.appendChild(tr);
+    });
+
+    goto('results');
+    Tween.snap($('fearScore'), 0);
+    Tween.set($('fearScore'), sum.score, 0);
+    let g = 0;
+    (function anim(){
+      g += (sum.score - g)*0.12;
+      Chart.gauge($('gaugeCv'), g);
+      if (Math.abs(sum.score-g) > 0.3) requestAnimationFrame(anim);
+      else Chart.gauge($('gaugeCv'), sum.score);
+    })();
+    requestAnimationFrame(()=>Chart.results($('resCv'), app.buffer.samples, base, an));
+  }
+
+  /* ---------- export ---------- */
+  function dl(name, text, type){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], {type}));
+    a.download = name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+  }
+  function expJson(){
+    if (!app.session) return;
+    dl('domain-'+app.session.clip+'.json', JSON.stringify(app.session,null,2), 'application/json');
+  }
+  function expCsv(){
+    if (!app.session) return;
+    const b = app.session.baseline;
+    let csv = 't_s,bpm,ibi_ms,z\n';
+    app.session.samples.forEach(s => {
+      csv += s.t.toFixed(3)+','+s.bpm.toFixed(2)+','+(s.ibi?s.ibi.toFixed(0):'')+','+S.z(s.bpm,b).toFixed(3)+'\n';
+    });
+    csv += '\n# scare_t,intensity,peak_t,peak_bpm,delta,latency,z_peak,recovery,score\n';
+    app.session.analyses.forEach(a => {
+      if (!a) return;
+      csv += '# '+[a.t0,a.intensity,a.peakT.toFixed(2),a.peakBpm.toFixed(1),a.delta.toFixed(1),
+                   a.latency.toFixed(2),a.zPeak.toFixed(2),
+                   a.recovery===null?'':a.recovery.toFixed(1),a.score.toFixed(0)].join(',')+'\n';
+    });
+    dl('domain-'+app.session.clip+'.csv', csv, 'text/csv');
+  }
+
+  /* ---------- modal ---------- */
+  const openModal  = () => $('srcModal').classList.add('open');
+  const closeModal = () => $('srcModal').classList.remove('open');
+
+  /* ---------- legaturi UI ---------- */
+  $('goCalib').onclick = () => { heart.ensure(); calib.begin(); };
+  $('skipCalib').onclick = async () => {
+    heart.ensure();
+    if (!app.source) await useSource('sim');
+    app.baseline = S.DEFAULT_BASELINE;
+    showLevels();
+  };
+  $('calibAbort').onclick = () => calib.abort();
+  $('calibNow').onclick  = () => calib.finish();
+  $('backIntro').onclick = () => goto('intro');
+  $('recalib').onclick   = () => calib.begin();
+  $('abortClip').onclick = () => { player.stop(); showLevels(); };
+  $('backLevels').onclick= () => showLevels(app.session ? app.session.decision.rank : null);
+  $('expJson').onclick   = expJson;
+  $('expCsv').onclick    = expCsv;
+  $('srcChip').onclick   = openModal;
+  $('closeModal').onclick= closeModal;
+  $('sndBtn').onclick    = () => heart.toggle();
+  document.querySelectorAll('.opt').forEach(el => {
+    el.tabIndex = 0; el.setAttribute('role','button');
+    el.onclick = () => { if (!el.classList.contains('dis')) useSource(el.dataset.src); };
+    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); el.click(); } };
+  });
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape'){
+      closeModal();
+      if (app.screen === 'play'){ player.stop(); showLevels(); }
+    }
+    if (e.code === 'Space' && app.screen === 'intro'){ e.preventDefault(); calib.begin(); }
+  });
+  window.addEventListener('resize', () => {
+    if (app.screen === 'results' && app.session)
+      Chart.results($('resCv'), app.session.samples, app.session.baseline, app.session.analyses);
+  });
+
+  /* pornim pe simulat, ca site-ul sa fie viu din prima secunda */
+  useSource('sim');
+  if (!D.SerialSource.supported()){
+    const o = document.querySelector('[data-src="serial"]');
+    o.classList.add('dis');
+    o.querySelector('span').textContent = 'Indisponibil aici. Deschide în Chrome sau Edge.';
+  }
+})();
+</script>
+
+<div id="simWarn" role="status">
+  <span class="wi">▲</span>
+  PROTOTIP — datele de puls sunt <b>SIMULATE</b>, nu măsurate
+  <a href="index.html">vezi site-ul cu testele reale →</a>
+</div>
+<style>
+#simWarn{
+  position:fixed;top:0;left:0;right:0;height:32px;z-index:200;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  background:#3d0b12;border-bottom:1px solid #7a1621;color:#ffcfd4;
+  font-family:var(--sans);font-size:11.5px;font-weight:600;letter-spacing:.05em;
+  padding:0 14px;text-align:center;
+}
+#simWarn .wi{color:var(--amber);font-size:10px}
+#simWarn b{color:#fff}
+#simWarn a{color:#ffcfd4;text-underline-offset:3px}
+#simWarn a:hover,#simWarn a:focus-visible{color:#fff}
+#topbar{top:32px !important}
+.screen{top:90px !important}
+#s-play{top:32px !important}
+@media (max-width:700px){
+  #simWarn{height:auto;padding:7px 12px;line-height:1.45}
+  #topbar{top:52px !important}
+  .screen{top:110px !important}
+  #s-play{top:52px !important}
+}
+</style>
+</body>
+</html>
